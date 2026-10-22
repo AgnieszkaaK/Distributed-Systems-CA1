@@ -93,9 +93,9 @@ export class AppApiStack extends cdk.Stack {
     };
     // Routes
     const moviesResource = api.root.addResource('movies');
-
     const movieRolesResource = moviesResource.addResource('{movieID}').addResource('roles');
-    movieRolesResource.addMethod('GET', new apig.LambdaIntegration(getMovieRolesFn) );
+
+    movieRolesResource.addMethod('GET', new apig.LambdaIntegration(getMovieRolesFn), userAuth );
 
     api.root
       .addResource('actors')
