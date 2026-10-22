@@ -97,6 +97,7 @@
     "@aws-cdk/core:enablePartitionLiterals": true,
     "@aws-cdk/core:explicitStackTags": true,
     "@aws-cdk/core:includePrefixInUniqueNameGeneration": true,
+    "@aws-cdk/core:bootstrapQualifier": "cadassign",
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn"
