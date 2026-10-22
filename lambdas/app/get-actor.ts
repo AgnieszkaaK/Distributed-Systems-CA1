@@ -6,6 +6,8 @@ import {
   parseId,
   tableName,
   toActor,
+  movieKey,
+  isRoleItem
 } from "../shared/db";
 import { response } from "../shared/http";
 import { logRequest } from "../shared/request-logger";
@@ -37,6 +39,29 @@ export const handler = async (
       return response(404, { message: `Actor ${actorId} not found` });
     }
     const actor = toActor(actorResult.Item);
+
+    // if a movie was given, look for this actors role in it.
+if (movieId !== undefined) {
+  const roleResult = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { PK: movieKey(movieId), SK: actorKey(actorId) },
+    })
+  );
+
+  // if the role exists, include its description with the actor's profile.
+  if (roleResult.Item && isRoleItem(roleResult.Item)) {
+    return response(200, {
+        data: {
+          actorId: actor.actorId,
+          name: actor.name,
+          dateOfBirth: actor.dateOfBirth,
+          bio: actor.bio,
+          roleDescription: roleResult.Item.roleDescription,
+  },
+});
+  }
+}
     return response(200, { data: actor });
   } catch (err) {
     console.error("DynamoDB error:", err);
