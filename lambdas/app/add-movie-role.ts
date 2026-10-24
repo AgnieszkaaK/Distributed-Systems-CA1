@@ -6,16 +6,39 @@ import { isResponse, parseJsonObject, response } from "../shared/http";
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  const body = parseJsonObject(event);
-  if (isResponse(body)) return body;
+const body = parseJsonObject(event);
+if (isResponse(body)) return body;
 
-  const role: Role = {
-    movieId: body.movieId as number,
-    actorId: body.actorId as number,
-    roleName: body.roleName as string,
-    roleDescription: body.roleDescription as string,
-  };
+// Checks required text fields, following the Cognito example.
+const fields = ["roleName", "roleDescription"];
+const missing = fields.filter(
+  (f) => typeof body[f] !== "string" || body[f] === ""
+);
 
+if (missing.length) {
+  return response(400, {
+    message: `Missing or invalid fields: ${missing.join(", ")}`,
+  });
+}
+
+// Check that both IDs are positive whole numbers.
+if (
+  !Number.isSafeInteger(body.movieId) ||
+  (body.movieId as number) <= 0 ||
+  !Number.isSafeInteger(body.actorId) ||
+  (body.actorId as number) <= 0
+) {
+  return response(400, {
+    message: "movieId and actorId must be positive integers",
+  });
+}
+
+const role: Role = {
+  movieId: body.movieId as number,
+  actorId: body.actorId as number,
+  roleName: body.roleName as string,
+  roleDescription: body.roleDescription as string,
+};
   try {
     //  TOD∏O - Add role if its IDs are valid
     return response(201, { message: "Role added", data: role });
