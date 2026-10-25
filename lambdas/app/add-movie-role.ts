@@ -2,18 +2,30 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { actorKey, ddb, movieKey, type Role, tableName } from "../shared/db";
 import { isResponse, parseJsonObject, response } from "../shared/http";
+import Ajv from "ajv";
+import schema from "../shared/types.schema.json";
+
+const ajv = new Ajv();
+
+// checks that the request matches the Role schema
+const isValidRolePayload = ajv.compile<Role>(schema);
+
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
 const body = parseJsonObject(event);
 if (isResponse(body)) return body;
+if (!isValidRolePayload(body)) {
+  return response(400, {
+    message: "Incorrect type. Must match the Role schema",
+    schema,
+  });
+}
 
-// checks required text fields, following the Cognito example
-const fields = ["roleName", "roleDescription"];
-const missing = fields.filter(
-  (f) => typeof body[f] !== "string" || body[f] === ""
-);
+// checks that the text fields aren't empty
+const fields: (keyof Role)[] = ["roleName", "roleDescription"];
+const missing = fields.filter((f) => body[f] === "");
 
 if (missing.length) {
   return response(400, {
