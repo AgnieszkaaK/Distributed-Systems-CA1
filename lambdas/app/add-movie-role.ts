@@ -4,6 +4,7 @@ import { actorKey, ddb, movieKey, type Role, tableName } from "../shared/db";
 import { isResponse, parseJsonObject, response } from "../shared/http";
 import Ajv from "ajv";
 import schema from "../shared/types.schema.json";
+import type { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 
 const ajv = new Ajv();
 
@@ -23,7 +24,7 @@ if (!isValidRolePayload(body)) {
   });
 }
 
-// checks that the text fields aren't empty
+// extra check: the schema allows strings to be empty
 const fields: (keyof Role)[] = ["roleName", "roleDescription"];
 const missing = fields.filter((f) => body[f] === "");
 
@@ -33,7 +34,7 @@ if (missing.length) {
   });
 }
 
-// check that both ids are positive whole numbers
+// extra check: ids must be positive whole numbers
 if (
   !Number.isSafeInteger(body.movieId) ||
   (body.movieId as number) <= 0 ||
@@ -56,7 +57,7 @@ await ddb.send( //runs the checks and save, if check fails, role wont be saved
   new TransactWriteCommand({
     TransactItems: [
       {
-        // check that the movire record exists before adding a rple
+      // make sure the actor exists before saving their role
         ConditionCheck: {
           TableName: tableName,
           Key: {
@@ -97,11 +98,31 @@ await ddb.send( //runs the checks and save, if check fails, role wont be saved
   })
 );
     return response(201, { message: "Role added", data: role });
-  } catch (err) {
-    console.error("DynamoDB error:", err);
+    } catch (err) {
+    // get the error name, like the Cognito example
+    const name = (err as Error).name;
+
+    if (name === "TransactionCanceledException") {
+      const reasons = (err as TransactionCanceledException).CancellationReasons;
+
+      // the movie check is first in our transaction
+      if (reasons?.[0]?.Code === "ConditionalCheckFailed") {
+        return response(400, {
+          message: `Movie ${role.movieId} not found`,
+        });
+      }
+
+      // the actor check is second in our transaction
+      if (reasons?.[1]?.Code === "ConditionalCheckFailed") {
+        return response(400, {
+          message: `Actor ${role.actorId} not found`,
+        });
+      }
+    }
+
+    console.error("Unexpected DynamoDB error:", err);
     return response(500, {
       message: "Internal server error",
-      error: err,
     });
   }
 };
