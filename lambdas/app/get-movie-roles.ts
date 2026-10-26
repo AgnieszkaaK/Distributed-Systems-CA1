@@ -17,6 +17,7 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   logRequest(event);
 
+  // get the movie id from the URL and check it's valid
   const movieId = parseId(event.pathParameters?.movieID);
   if (movieId === undefined) {
     return response(400, { message: "movieID must be a positive integer" });
@@ -40,8 +41,8 @@ try {
 
   // if an actor id is given, match that key aswell
   if (actorId !== undefined) {
-    keyCondition = "PK = :pk AND SK = :sk"; //matches the movie and the actor
-    keyValues[":sk"] = actorKey(actorId); //set sk: to the actors key
+    keyCondition = "PK = :pk AND SK = :sk"; // matches the movie and the actor
+    keyValues[":sk"] = actorKey(actorId); // set :sk to the actor's key
   }
 
 
@@ -49,19 +50,20 @@ try {
     const queryResult = await ddb.send(
       new QueryCommand({
         TableName: tableName,
-        KeyConditionExpression: keyCondition, //updated because originally query only looked for movie
-        ExpressionAttributeValues: keyValues, //supplies the keys that are needed for the search
-        // ExclusiveStartKey: lastKey,
-})
+        KeyConditionExpression: keyCondition, // match the movie, and actor if given
+        ExpressionAttributeValues: keyValues, // give the query the keys to look for
+      })
     );
 
+    // use an empty list if nothing was returned
     const resultItems = queryResult.Items ?? [];
+
+    // keep only roles and return their details without the database keys
     return response(200, { data: resultItems.filter(isRoleItem).map(toRole) });
   } catch (err) {
-    console.error("DynamoDB error:", err);
+    console.error("DynamoDB error:", err); // log the full error in CloudWatch
     return response(500, {
-      message: "Internal server error",
-      error: err,
+      message: "Internal server error",// send a simple error message back
     });
   }
 };
