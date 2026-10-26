@@ -93,12 +93,26 @@ table.grantReadWriteData(addMovieRoleFn);
       authorizer: userAuthorizer,
       authorizationType: apig.AuthorizationType.CUSTOM,
     };
+    // API Gateway generates the admin key when deployed
+    const adminKey = api.addApiKey('AdminApiKey');
+
+    // connect the key to this API's deployed stage
+    const adminPlan = api.addUsagePlan('AdminUsagePlan');
+    adminPlan.addApiKey(adminKey);
+    adminPlan.addApiStage({
+      stage: api.deploymentStage,
+    });
+
     // Routes
     const moviesResource = api.root.addResource('movies');
     // POST /movies/roles adds a new role
     moviesResource
     .addResource('roles')
-    .addMethod('POST', new apig.LambdaIntegration(addMovieRoleFn));
+    .addMethod('POST', new apig.LambdaIntegration(addMovieRoleFn), {
+    // require the admin API key to add a role
+    apiKeyRequired: true,
+  });
+  
     const movieRolesResource = moviesResource.addResource('{movieID}').addResource('roles');
 
     movieRolesResource.addMethod('GET', new apig.LambdaIntegration(getMovieRolesFn), userAuth );
