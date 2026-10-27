@@ -1,5 +1,5 @@
 {
-  "app": "npx tsc && npx tsx bin/assignment.ts",
+  "app": "npm run build && npx tsx bin/assignment.ts",
   "watch": {
     "include": [
       "**"

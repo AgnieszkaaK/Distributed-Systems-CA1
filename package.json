@@ -2,6 +2,7 @@
   "name": "assignment",
   "version": "0.1.0",
   "scripts": {
+    "prebuild": "npm run schema",
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
