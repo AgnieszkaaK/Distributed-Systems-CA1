@@ -1,4 +1,4 @@
-##Cloud App Development - Assignment.
+## Cloud App Development - Assignment.
 
 # My Implementation
 Implemented the movie cast API using the provided starter code, labs and Cognito example.
